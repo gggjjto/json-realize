@@ -29,14 +29,10 @@ typedef struct {
     const char* json;
 }context;
 
-class Json
-{
-private:
 
-public:
-    json_type get_value(const json_value *value);
-    int parse(json_value *v, const char *json);
-};
+json_type get_value(const json_value *value);
+int parse(json_value *v, const char *json);
+
 
 
 #endif //JSON_H

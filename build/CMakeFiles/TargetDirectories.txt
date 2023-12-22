@@ -1,0 +1,4 @@
+/home/ubuntu/json-tutorial/json-realize/build/CMakeFiles/jsonrealize.dir
+/home/ubuntu/json-tutorial/json-realize/build/CMakeFiles/jsonrealize_test.dir
+/home/ubuntu/json-tutorial/json-realize/build/CMakeFiles/edit_cache.dir
+/home/ubuntu/json-tutorial/json-realize/build/CMakeFiles/rebuild_cache.dir

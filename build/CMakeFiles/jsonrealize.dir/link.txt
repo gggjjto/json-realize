@@ -1,0 +1,2 @@
+/usr/bin/ar qc libjsonrealize.a CMakeFiles/jsonrealize.dir/json.cpp.o
+/usr/bin/ranlib libjsonrealize.a
