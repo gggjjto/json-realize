@@ -17,6 +17,7 @@ int test_pass = 0;
     }while(0);
 
 #define EXPECT_INT(expect, actual) EXPECT_BASE(expect == actual, expect, actual,"%d")
+#define EXPECT_DOUBLE(expect, actual) EXPECT_BASE(expect == actual, expect, actual,"%.17g")
 
 void test_parse_null() {
     json_value v;
@@ -25,41 +26,117 @@ void test_parse_null() {
     EXPECT_INT(JSON_NULL, get_value(&v));
 }
 
-void test_parse_expect_value() {
+void test_parse_true() {
     json_value v;
-
-    v.type = FALSE;
-    EXPECT_INT(PARSE_EXPCET_VALUE, parse(&v, ""));
-    EXPECT_INT(JSON_NULL, get_value(&v));
-
-    v.type = FALSE;
-    EXPECT_INT(PARSE_EXPCET_VALUE, parse(&v, " "));
-    EXPECT_INT(JSON_NULL, get_value(&v));
+    v.type = TURE;
+    EXPECT_INT(PARSE_OK, parse(&v, "true"));
+    EXPECT_INT(TURE, get_value(&v));
 }
 
-void test_parse_invalid_value() {
+void test_parse_false() {
     json_value v;
     v.type = FALSE;
-    EXPECT_INT(PARSE_INVALID_VALUE, parse(&v, "nul"));
-    EXPECT_INT(JSON_NULL,get_value(&v));
+    EXPECT_INT(PARSE_OK, parse(&v, "false"));
+    EXPECT_INT(FALSE, get_value(&v));
+}
 
-    v.type = FALSE;
-    EXPECT_INT(PARSE_INVALID_VALUE, parse(&v,"?"));
-    EXPECT_INT(JSON_NULL,get_value(&v));
+#define TEST_NUMBER(expect, json)\
+    do{\
+        json_value v;\
+        EXPECT_INT(PARSE_OK, parse(&v, json));\
+        EXPECT_INT(NUMBER, get_value(&v));\
+        EXPECT_DOUBLE(expect, get_number(&v));\
+    }while(0)
+
+#define TEST_ERROR(error, json)\
+    do{\
+        json_value v;\
+        v.type = FALSE;\
+        EXPECT_INT(error, parse(&v, json));\
+        EXPECT_INT(JSON_NULL, get_value(&v));\
+    }while(0)
+
+void test_parse_number() {
+    TEST_NUMBER(0.0, "0");
+    TEST_NUMBER(0.0, "-0");
+    TEST_NUMBER(0.0, "-0.0");
+    TEST_NUMBER(1.0, "1");
+    TEST_NUMBER(-1.0, "-1");
+    TEST_NUMBER(1.5, "1.5");
+    TEST_NUMBER(-1.5, "-1.5");
+    TEST_NUMBER(3.1416, "3.1416");
+    TEST_NUMBER(1E10, "1E10");
+    TEST_NUMBER(1e10, "1e10");
+    TEST_NUMBER(1E+10, "1E+10");
+    TEST_NUMBER(1E-10, "1E-10");
+    TEST_NUMBER(-1E10, "-1E10");
+    TEST_NUMBER(-1e10, "-1e10");
+    TEST_NUMBER(-1E+10, "-1E+10");
+    TEST_NUMBER(-1E-10, "-1E-10");
+    TEST_NUMBER(1.234E+10, "1.234E+10");
+    TEST_NUMBER(1.234E-10, "1.234E-10");
+    TEST_NUMBER(0.0, "1e-10000"); /* must underflow */
+
+    TEST_NUMBER(1.0000000000000002, "1.0000000000000002"); /* the smallest number > 1 */
+    TEST_NUMBER( 4.9406564584124654e-324, "4.9406564584124654e-324"); /* minimum denormal */
+    TEST_NUMBER(-4.9406564584124654e-324, "-4.9406564584124654e-324");
+    TEST_NUMBER( 2.2250738585072009e-308, "2.2250738585072009e-308");  /* Max subnormal double */
+    TEST_NUMBER(-2.2250738585072009e-308, "-2.2250738585072009e-308");
+    TEST_NUMBER( 2.2250738585072014e-308, "2.2250738585072014e-308");  /* Min normal positive double */
+    TEST_NUMBER(-2.2250738585072014e-308, "-2.2250738585072014e-308");
+    TEST_NUMBER( 1.7976931348623157e+308, "1.7976931348623157e+308");  /* Max double */
+    TEST_NUMBER(-1.7976931348623157e+308, "-1.7976931348623157e+308");
+}
+
+void test_parse_expect_value() {
+    /* \n\t*/
+    TEST_ERROR(PARSE_EXPCET_VALUE, "");
+    TEST_ERROR(PARSE_EXPCET_VALUE, " ");
+}
+
+
+void test_parse_invalid_value() {
+    /* null */
+    TEST_ERROR(PARSE_INVALID_VALUE,"nul");
+    TEST_ERROR(PARSE_INVALID_VALUE,"?");
+    /* invalid number */
+    TEST_ERROR(PARSE_INVALID_VALUE, "+0");
+    TEST_ERROR(PARSE_INVALID_VALUE, "+1");
+    TEST_ERROR(PARSE_INVALID_VALUE, ".123"); /* at least one digit before '.' */
+    TEST_ERROR(PARSE_INVALID_VALUE, "1.");   /* at least one digit after '.' */
+    TEST_ERROR(PARSE_INVALID_VALUE, "INF");
+    TEST_ERROR(PARSE_INVALID_VALUE, "inf");
+    TEST_ERROR(PARSE_INVALID_VALUE, "NAN");
+    TEST_ERROR(PARSE_INVALID_VALUE, "nan");
 }
 
 void test_parse_root_not_singular() {
-    json_value v;
-    v.type = FALSE;
-    EXPECT_INT(PARSE_ROOT_NOT_SINGULAR, parse(&v, "null x"));
-    EXPECT_INT(JSON_NULL, get_value(&v));
+    /* null */
+    TEST_ERROR(PARSE_ROOT_NOT_SINGULAR, "null x");
+    /* invalid number */
+    TEST_ERROR(PARSE_ROOT_NOT_SINGULAR, "0123"); /* after zero should be '.' or nothing */
+    TEST_ERROR(PARSE_ROOT_NOT_SINGULAR, "0x0");
+    TEST_ERROR(PARSE_ROOT_NOT_SINGULAR, "0x123");
 }
 
-int main(){
+void test_parse_number_too_big() {
+    TEST_ERROR(PARSE_NUMBER_TOO_BIG, "1e309");
+    TEST_ERROR(PARSE_NUMBER_TOO_BIG, "-1e309");
+}
+
+void test_parse(){
     test_parse_null();
+    test_parse_true();
+    test_parse_false();
+    test_parse_number();
     test_parse_expect_value();
     test_parse_invalid_value();
     test_parse_root_not_singular();
+    test_parse_number_too_big();
+}
+
+int main(){
+    test_parse();
     printf("%d/%d (%3.2f%%) passed\n",test_pass, test_count, test_pass * 100.0 / test_count);
     return 0;
 }
