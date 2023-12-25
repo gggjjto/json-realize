@@ -15,9 +15,26 @@ int test_pass = 0;
         if(equality) {test_pass++;}\
         else {fprintf(stderr,"%s:%d: expect:" format " actual: " format "\n", __FILE__, __LINE__, expect, actual); main_ret = 1; }\
     }while(0);
-
+#define TEST_ERROR(error, json)\
+    do{\
+        json_value v;\
+        v.type = FALSE;\
+        EXPECT_INT(error, parse(&v, json));\
+        EXPECT_INT(JSON_NULL, get_value(&v));\
+    }while(0)
+#define TEST_NUMBER(expect, json)\
+    do{\
+        json_value v;\
+        EXPECT_INT(PARSE_OK, parse(&v, json));\
+        EXPECT_INT(NUMBER, get_value(&v));\
+        EXPECT_DOUBLE(expect, get_number(&v));\
+    }while(0)
+#define TEST_AC_STRING(expect, actual, alength) EXPECT_BASE(sizeof(expect)-1 == (alength) && memcmp(expect, actual, alength) == 0, expect, actual, "%s")
 #define EXPECT_INT(expect, actual) EXPECT_BASE(expect == actual, expect, actual,"%d")
 #define EXPECT_DOUBLE(expect, actual) EXPECT_BASE(expect == actual, expect, actual,"%.17g")
+#define TEST_AC_FALSE(expect) EXPECT_BASE(((bool)expect) == false, "false", "TRUE", "%s")
+#define TEST_AC_TRUE(expect) EXPECT_BASE(((bool)expect) == true, "TRUE", "false", "%s")
+#define TEST_AC_NUMBER(expect, actual) EXPECT_BASE(expect == actual, expect, actual, "%f")
 
 void test_parse_null() {
     json_value v;
@@ -28,9 +45,9 @@ void test_parse_null() {
 
 void test_parse_true() {
     json_value v;
-    v.type = TURE;
+    v.type = TRUE;
     EXPECT_INT(PARSE_OK, parse(&v, "true"));
-    EXPECT_INT(TURE, get_value(&v));
+    EXPECT_INT(TRUE, get_value(&v));
 }
 
 void test_parse_false() {
@@ -39,23 +56,6 @@ void test_parse_false() {
     EXPECT_INT(PARSE_OK, parse(&v, "false"));
     EXPECT_INT(FALSE, get_value(&v));
 }
-
-#define TEST_NUMBER(expect, json)\
-    do{\
-        json_value v;\
-        EXPECT_INT(PARSE_OK, parse(&v, json));\
-        EXPECT_INT(NUMBER, get_value(&v));\
-        EXPECT_DOUBLE(expect, get_number(&v));\
-    }while(0)
-
-#define TEST_ERROR(error, json)\
-    do{\
-        json_value v;\
-        v.type = FALSE;\
-        EXPECT_INT(error, parse(&v, json));\
-        EXPECT_INT(JSON_NULL, get_value(&v));\
-    }while(0)
-
 void test_parse_number() {
     TEST_NUMBER(0.0, "0");
     TEST_NUMBER(0.0, "-0");
@@ -124,6 +124,45 @@ void test_parse_number_too_big() {
     TEST_ERROR(PARSE_NUMBER_TOO_BIG, "-1e309");
 }
 
+void test_access_string() {
+    json_value v;
+    json_init(&v);
+    set_string(&v, "", 0);
+    TEST_AC_STRING("", get_string(&v), get_string_length(&v));
+    set_string(&v, "Hello", 5);
+    TEST_AC_STRING("Hello", get_string(&v), get_string_length(&v));
+    json_free(&v);
+}
+
+void test_access_null() {
+    json_value v;
+    json_init(&v);
+    set_string(&v, "a", 1);
+    json_set_null(&v);
+    EXPECT_INT(JSON_NULL, get_value(&v));
+    json_free(&v);
+}
+
+
+void test_access_boolean() {
+    json_value v;
+    json_init(&v);
+    set_boolean(&v, 1);
+    TEST_AC_TRUE(get_boolean(&v));
+    set_boolean(&v, 0);
+    TEST_AC_FALSE(get_boolean(&v));
+    json_free(&v);
+}
+
+
+void test_access_number() {
+    json_value v;
+    json_init(&v);
+    set_number(&v, 123.0);
+    TEST_AC_NUMBER(123.0, get_number(&v));
+    json_free(&v);
+}
+
 void test_parse(){
     test_parse_null();
     test_parse_true();
@@ -133,6 +172,11 @@ void test_parse(){
     test_parse_invalid_value();
     test_parse_root_not_singular();
     test_parse_number_too_big();
+
+    test_access_string();
+    test_access_boolean();
+    test_access_null();
+    test_access_number();
 }
 
 int main(){
